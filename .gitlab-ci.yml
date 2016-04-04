@@ -26,7 +26,7 @@ before_script:
 stages:
   - build
   - test
-  - deploy_failure
+  - test_failure
   - deploy
 
 # A sample rails build stage, to ensure we are able to compile our assets.  Disabled
@@ -41,6 +41,7 @@ stages:
 #    - assets/
 
 build:
+  stage: build
   script:
   - mkdir -p $CI_PROJECT_DIR/assets
   - cp -a $CI_PROJECT_DIR/data/* $CI_PROJECT_DIR/assets/
@@ -50,17 +51,19 @@ build:
 
 # A testing stage we define to ensure that our syntax check and any unit tests pass
 test:
+  stage: test
   script:
   - bundle exec rake test
   - bundle exec rubocop
-#  dependencies:
-#  - build
+  dependencies:
+  - build
 #  artifacts:
 #    paths:
 #    - assets/
 
 # If you have a custom workflow or ticketing system, this step could handle that deploy failure
-deploy_failure:
+test_failure:
+  stage: test_failure
   script:
   - echo "Failure handling goes here..."
   when: on_failure
@@ -70,12 +73,10 @@ deploy_failure:
 # webservers, or to trigger AWS to perform a rollout of a new version of the codebase.  For now
 # We'll just copy.
 deploy:
+  stage: deploy
   script:
-  - echo "Do a deploy here..."
-#  - mkdir -p $DEPLOY_PATH
-#  - cp -a $CI_PROJECT_DIR/assets/* $DEPLOY_PATH
-#  - ls -la $DEPLOY_PATH
-  when: on_success
-#  dependencies:
-#  - build
+  - echo "Do a deploy here using some deployment software (capistrano?) with the deploy key $DEPLOY_KEY_HERE"
+  - ls -la $CI_PROJECT_DIR/assets/
+  dependencies:
+  - build
 
