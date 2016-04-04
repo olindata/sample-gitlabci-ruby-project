@@ -1,11 +1,81 @@
-image: ruby:2.2
+# Specify the docker image to use (only used if using docker runners)
+# See: http://doc.gitlab.com/ee/ci/docker/using_docker_images.html
+# image: ruby:2.1
 
-services:
-  - postgres:9.3
+# The docker services to configure
+# See: http://doc.gitlab.com/ee/ci/docker/using_docker_images.html#what-is-service
+# services:
+#   - postgres:9.3
 
+# Define custom build variables
+#   For the default gitlab variables see: http://doc.gitlab.com/ce/ci/variables/README.html
+#   These can be used below, or they will also be ENV variables available within' any scripts
+#   you execute from the CI
+variables:
+  DEPLOY_PATH: "/var/www/sample-site"
+  RAILS_ENV: "development"
+
+# Define commands that run before each job's script
 before_script:
   - bundle install
 
+# stages is used to define build stages that can be used by jobs
+# The specification of stages allows for having flexible multi stage pipelines
+# The next stage only executes if all elements of the previous stage succeed
+# Typically used for compiled languages testing and/or to automate deployments
+stages:
+  - build
+  - test
+  - deploy_failure
+  - deploy
+
+# A sample rails build stage, to ensure we are able to compile our assets.  Disabled
+#   for this project because it is not a rails app.
+#build:
+#  script:
+#  - bundle exec rake assets:precompile 
+# To copy this data on over use the "artifacts" and "dependencies" feature
+# From: http://doc.gitlab.com/ee/ci/yaml/README.html#dependencies
+#  artifacts:
+#    paths:
+#    - assets/
+
+build:
+  script:
+  - mkdir -p $CI_PROJECT_DIR/assets
+  - cp -a $CI_PROJECT_DIR/data/* $CI_PROJECT_DIR/assets/
+  artifacts:
+    paths:
+    - assets/
+
+# A testing stage we define to ensure that our syntax check and any unit tests pass
 test:
   script:
   - bundle exec rake test
+  - bundle exec rubocop
+#  dependencies:
+#  - build
+#  artifacts:
+#    paths:
+#    - assets/
+
+# If you have a custom workflow or ticketing system, this step could handle that deploy failure
+deploy_failure:
+  script:
+  - echo "Failure handling goes here..."
+  when: on_failure
+
+# Here is a stage we defined to automatically deploy the code if the build and tests succeed above
+# This could be configured to use tools like ansible to check-out the current branch on your live
+# webservers, or to trigger AWS to perform a rollout of a new version of the codebase.  For now
+# We'll just copy.
+deploy:
+  script:
+  - echo "Do a deploy here..."
+#  - mkdir -p $DEPLOY_PATH
+#  - cp -a $CI_PROJECT_DIR/assets/* $DEPLOY_PATH
+#  - ls -la $DEPLOY_PATH
+  when: on_success
+#  dependencies:
+#  - build
+
